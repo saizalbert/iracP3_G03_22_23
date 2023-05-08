@@ -1,0 +1,150 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>IRAC P03</title>
+    <style>
+        video {
+            width: 640px;
+            height: 360px;
+        }
+    </style>
+    <script src="http://cdn.dashjs.org/latest/dash.all.min.js">    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"></script>
+
+</head>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        init();
+    });
+    function init() {
+        var video,
+            player,
+            //mpd_url = "./output/stream.mpd";
+            mpd_url = "https://dash.akamaized.net/envivio/EnvivioDash3/manifest.mpd";
+        video = document.querySelector("video");
+        player = dashjs.MediaPlayer().create();
+        player.initialize(video, mpd_url, true);
+        player.on(dashjs.MediaPlayer.events["PLAYBACK_ENDED"], function () {
+            clearInterval(eventPoller);
+        });
+        var eventPoller = setInterval(function () {
+            var streamInfo = player.getActiveStream().getStreamInfo();
+            var dashMetrics = player.getDashMetrics();
+            var dashAdapter = player.getDashAdapter();
+            if (dashMetrics && streamInfo) {
+                const periodIdx = streamInfo.index;
+                var repSwitch = dashMetrics.getCurrentRepresentationSwitch('video', true);
+                var bufferLevel = dashMetrics.getCurrentBufferLevel('video', true);
+                var bitrate = repSwitch ? Math.round(dashAdapter.
+                    getBandwidthForRepresentation(repSwitch.to,
+                        periodIdx) / 1000) : NaN;
+                document.getElementById('buffer').innerText = bufferLevel + " secs";
+                document.getElementById('bitrate').innerText = bitrate + " Kbps";
+                document.getElementById('representation').innerText = repSwitch.to;
+                graphBitrate.push(bitrate);
+                graphBuffer.push(bufferLevel);
+                graphTime.push(new Date().getHours() + ":" + new Date().getMinutes() + ":" + new Date().getSeconds() + ":" + new Date().getMilliseconds());
+                const ctx = document.getElementById('myChart').getContext('2d');
+                if (myChart) {
+                    myChart.destroy();
+                }
+                myChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: [
+                            {
+                                backgroundColor: 'rgb(119, 221, 119)',
+                                borderColor: 'rgb(119, 221, 119)',
+                                fill: false,
+                                data: graphBitrate,
+                                id: 'amount',
+                                label: 'Bitrate (kbps)',
+                                yAxisID: 'left'
+                            },
+                            {
+                                backgroundColor: 'rgb(253, 202 , 225)',
+                                borderColor: 'rgb(255, 105, 97)',
+                                fill: true,
+                                data: graphBuffer,
+                                id: 'amount',
+                                label: 'Buffer  (s)',
+                                yAxisID: 'right'
+                            }
+                        ],
+                        labels: graphTime
+                    },
+                    options: {
+                        animation: { duration: 0 },
+                        elements: { rectangle: { borderWidth: 2 } },
+                        layout: { padding: 0 },
+                        legend: {
+                            display: true,
+                            labels: { boxWidth: 16 }
+                        },
+                        maintainAspectRatio: false,
+                        responsive: true,
+                        scales: {
+                            left: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Bitrate (kbps)'
+                                }
+                            },
+                            right: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Buffer level (s)'
+                                },
+                                grid: {
+                                    drawOnChartArea: false
+                                }
+                            }
+                        },
+                        title: { display: false },
+                        tooltips: {
+                            intersect: false,
+                            mode: 'index',
+                            position: 'nearest',
+                            callbacks: {}
+                        }
+                    }
+                });
+            }
+        }, 500);
+    }
+</script>
+
+<body>
+    <h1>
+        Practice 3 : Group 3 : Part 4
+    </h1>
+    <div>
+        <video class="code" autoplay controls preload="auto" muted>
+        </video>
+    </div>
+    <div class="code">
+        <p>Video Bitrate: <span id="bitrate"></span> kbps</p>
+        <p>Video Buffer: <span id="buffer"></span> seconds</p>
+        <p>Video Representation: <span id="representation"></span></p>
+    </div>
+    <div style="width:1640px; height:360px">
+        <canvas id="myChart"></canvas>
+    </div>
+    <script>
+        var graphBitrate = new Array();
+        var graphBuffer = new Array();
+        var graphTime = new Array();
+        var myChart;
+
+        
+    </script>
+</body>
+
+</html>
